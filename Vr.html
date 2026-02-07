@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>VR Headset</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { margin:0; overflow:hidden; background:black; }
+    canvas { display:block; }
+  </style>
+</head>
+<body>
+
+<audio id="gunshot" src="https://cdn.pixabay.com/audio/2022/03/15/audio_7c9c5b8e9a.mp3"></audio>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
+
+<script>
+const ws = new WebSocket("wss://YOUR_REPL_URL");
+
+// Scene
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth/2 / window.innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer();
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+// Simple environment
+const geometry = new THREE.BoxGeometry();
+const material = new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe:true });
+const cube = new THREE.Mesh(geometry, material);
+cube.position.z = -5;
+scene.add(cube);
+
+// Aim data
+let aimX = 0;
+let aimY = 0;
+
+ws.onmessage = e => {
+  const data = JSON.parse(e.data);
+
+  if (data.type === "aim") {
+    aimX = (data.x - 50) / 50;
+    aimY = (data.y - 50) / 50;
+  }
+
+  if (data.type === "shoot") {
+    document.getElementById("gunshot").play();
+    cube.rotation.x += 0.3;
+  }
+};
+
+function animate() {
+  requestAnimationFrame(animate);
+
+  camera.rotation.y = aimX;
+  camera.rotation.x = -aimY;
+
+  renderer.setScissorTest(true);
+
+  // LEFT EYE
+  renderer.setScissor(0, 0, window.innerWidth/2, window.innerHeight);
+  renderer.setViewport(0, 0, window.innerWidth/2, window.innerHeight);
+  renderer.render(scene, camera);
+
+  // RIGHT EYE
+  renderer.setScissor(window.innerWidth/2, 0, window.innerWidth/2, window.innerHeight);
+  renderer.setViewport(window.innerWidth/2, 0, window.innerWidth/2, window.innerHeight);
+  renderer.render(scene, camera);
+
+  renderer.setScissorTest(false);
+}
+
+animate();
+</script>
+</body>
+</html>
